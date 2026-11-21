@@ -4,8 +4,6 @@ import utumishiorg.example.app.model.Patient
 import utumishiorg.example.app.model.enums.BloodType
 import utumishiorg.example.app.model.enums.Gender
 import utumishiorg.example.app.service.PatientService
-import java.nio.file.Files.delete
-import java.security.Provider
 
 class PatientMenu(
     private val service: PatientService
@@ -39,39 +37,87 @@ class PatientMenu(
 
     private fun addPatient() {
         printHeader("Add Patient")
-        val id = readInt("ID: ")
-        val name = readString("Name: ")
-        val age = readInt("Age: ")
+        val id: Int
+        while (true) {
+            val inputId = readInt("ID: ")
+            if (service.findById(inputId) != null) {
+                println("Error: Patient with ID $inputId already exists. Try another")
+            }else{
+                id = inputId
+                break
+            }
+        }
+
+
+        val name = readNonEmptyString("Name: ",{it.matches(Regex("[A-Za-z\\s'-]+$"))},
+        "invalid name. Try again")
+        val age = readIntInRange("Age: ", 1, 150)
         val diagnosis = readString("Diagnosis: ")
 
-        println("Gender: 1=MALE, 2=FEMALE, 3=OTHER")
-        val gender = when (readInt("Choose: ")) {
-            1 -> Gender.MALE
-            2 -> Gender.FEMALE
-            else -> Gender.OTHER
+        val gender: Gender
+        while (true) {
+            println("Gender: 1=MALE , 2=FEMALE, 3=OTHER")
+            val choice = readInt("Choose: ")
+            gender= when(choice){
+                1 -> Gender.MALE
+                2 -> Gender.FEMALE
+                3 -> Gender.OTHER
+                else -> {println("Invalid option. Try again"); continue}
+            }
+            break
         }
 
-        println("Blood Type: 1=A+ 2=A- 3=B+ 4=B- 5=O+ 6=O- 7=AB+ 8=AB- 0=Skip")
-        val bloodType = when (readInt("Choose: ")) {
-            1 -> BloodType.A_POSITIVE
-            2 -> BloodType.A_NEGATIVE
-            3 -> BloodType.B_POSITIVE
-            4 -> BloodType.B_NEGATIVE
-            5 -> BloodType.O_POSITIVE
-            6 -> BloodType.O_NEGATIVE
-            7 -> BloodType.AB_POSITIVE
-            8 -> BloodType.AB_NEGATIVE
-            else -> null
+        val bloodType: BloodType?
+        while (true) {
+            println("Blood Type: 1=A+ 2=A- 3=B+ 4=B- 5=O+ 6=O- 7=AB+ 8=AB- 0=Skip")
+            val choice = readInt("Choose: ")
+            bloodType = when (choice) {
+                1 -> BloodType.A_POSITIVE
+                2 -> BloodType.A_NEGATIVE
+                3 -> BloodType.B_POSITIVE
+                4 -> BloodType.B_NEGATIVE
+                5 -> BloodType.O_POSITIVE
+                6 -> BloodType.O_NEGATIVE
+                7 -> BloodType.AB_POSITIVE
+                8 -> BloodType.AB_NEGATIVE
+                0 -> null
+                else -> { println("Invalid option. Try again"); continue}
+            }
+            break
         }
-
-        val phone = readString("Phone: (optional): ")
-        val email = readString("Email: (optional): ")
+        val phone: String
+        while (true) {
+            val input = readOptionalString("Phone: (10 digits) ")
+            if (input.isBlank()){
+                phone= ""
+                break
+            }
+            if (input.length == 10 && input.all { it.isDigit() }){
+                phone = input
+                break
+            }
+        }
+        val email: String
+        while (true) {
+            val input = readOptionalString("Email: ")
+            if (input.isBlank()){
+                email= ""
+                break
+            }
+            if (input.contains("@") && input.contains(".")){
+                email = input
+                break
+            }
+            println("Invalid email format. Try again")
+        }
 
         val patient = Patient(id, name, age, diagnosis, gender, bloodType, phone, email)
 
-        if (service.addPatient(patient))
+        service.addPatient(patient).onFailure {
+            println("Error: ${it.message}")
+        }.getOrNull()?.let {
             println("Patient added")
-        else println("Error: ID $id already exists")
+        }
     }
 
     //--VIEW ALL--
@@ -131,20 +177,25 @@ class PatientMenu(
         val id = readInt("Enter ID to update: ")
         service.findById(id) ?: return println("Not found")
         println("Enter new values: ")
-        val name = readString("Name: ")
-        val age = readInt("Age:")
+        val name = readNonEmptyString("Name: ",{it.matches(Regex("[A-Za-z\\s'-]+$"))},
+            "invalid name. Try again")
+        val age = readIntInRange("Age: ", 1, 150)
         val diagnosis = readString("Diagnosis: ")
-        val update = Patient(id, name, age, diagnosis)
-        if (service.updatePatient(id, update))
-            println("updated")
-        else println("Failed.")
+        val gender = readInt("Gender: 1=MALE, 2=FEMALE, 3=OTHER")
+        val phone = readOptionalString("Phone: ")
+        val email = readOptionalString("Email: ")
+        val update = Patient(id, name, age, diagnosis, Gender.values()[gender], null, phone, email)
+        service.updatePatient(id, update).onFailure {
+            println("Error: ${it.message}")
+        }.getOrNull()?.let {
+            println("Patient updated")
+        }
     }
 
     private fun delete(){
         val id = readInt("Enter ID to delete: ")
         if(service.removePatient(id))
-            if (service.removePatient(id))
-                println("Deleted")
+            println("Deleted")
         else println("Not found.")
     }
 }

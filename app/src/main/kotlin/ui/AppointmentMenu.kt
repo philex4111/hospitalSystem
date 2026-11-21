@@ -1,6 +1,5 @@
 package utumishiorg.example.app.ui
 
-import sun.jvmstat.perfdata.monitor.CountedTimerTaskUtils.reschedule
 import utumishiorg.example.app.model.Appointment
 import  utumishiorg.example.app.model.enums.AppointmentStatus
 import utumishiorg.example.app.service.AppointmentService
@@ -61,8 +60,9 @@ class AppointmentMenu(
         val dateTime = readDateTime("Date & Time (YYYY-MM-DD HH:MM): ")?: return
         val notes = readString("Notes (optional): ")
 
-        val appointment = service.scheduleAppointment(patientId, doctorId, dateTime, notes)
-        println("Appointment sheduled: ${appointment.id}")
+        service.scheduleAppointment(patientId, doctorId, dateTime, notes).onFailure { println("Error: ${it.message}") }.getOrNull()?.let {
+            appointment -> println("Appointment scheduled for ${appointment.id}")
+        }
     }
 
     private fun viewAll(){
@@ -134,12 +134,12 @@ class AppointmentMenu(
     }
 
     private fun reschedule(){
-        val id = readInt("Enter ID: ")
-        val newDateTime = readDateTime("Enter new date & time (yyyy-mm-dd hh:mm): ")?:
+     val id = readInt("Enter ID: ")
+        val newDateTime = readDateTime("Enter new date & time (YYYY-MM-DD HH:MM): ")?:
         return
-        if (service.rescheduleAppointment(id, newDateTime) )
+        service.rescheduleAppointment(id, newDateTime).onFailure { println("Error: ${it.message}") }.getOrNull()?.let {
             println("Rescheduled")
-        else println("Not found")
+        }
     }
 
     private fun delete(){

@@ -1,20 +1,21 @@
 package utumishiorg.example.app.service
 
+import kotlinx.serialization.Serializable
 import utumishiorg.example.app.model.Patient
 import utumishiorg.example.app.model.enums.Gender
-
+@Serializable
 class PatientService{
     //private storage only this class can modify it
     private val patients = mutableListOf<Patient>()
 
     //--CREATE--
-    fun addPatient(patient: Patient): Boolean{
+    fun addPatient(patient: Patient): Result<Patient>{
         //check if duplicate id
         if(patients.any(){it.id == patient.id}){
-            return false
+            return Result.failure(IllegalArgumentException("Patient with ID ${patient.id} already exists"))
         }
         patients.add(patient)
-        return true
+        return Result.success(patient)
     }
 
     //--READ--
@@ -39,21 +40,21 @@ class PatientService{
     fun findByAgeRange(minAge: Int, maxAge: Int): List<Patient> =
         patients.filter{it.age in minAge..maxAge}
 
-                    //--UPDATE
-    fun updatePatient(id: Int, update: Patient): Boolean{
+    //--UPDATE
+    fun updatePatient(id: Int, update: Patient): Result<Patient>{
         val index = patients.indexOfFirst { it.id == id }
-                        if(index >= 0){
-                            patients[index] = update
-                            return true
-                        }
-                        return false
+        if(index < 0){
+            return Result.failure(IllegalArgumentException("patient with ID ${update.id} already exists"))
+        }
+        patients[index] = update
+        return Result.success(update)
     }
-                    //--DELETE--
+    //--DELETE--
     fun removePatient(id: Int): Boolean{
         val patient = findById(id)
-                        return if (patient!= null){
-                            patients.remove(patient)
-                            true
-                        }else false
+        return if (patient!= null){
+            patients.remove(patient)
+            true
+        }else false
     }
 }
